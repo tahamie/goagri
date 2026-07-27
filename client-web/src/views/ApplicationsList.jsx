@@ -42,7 +42,7 @@ export default function ApplicationsList({ onNavigate, onOpenApp }) {
 
       {/* CONSISTENT UI KPI SUMMARY BOXES */}
       <div className="grid g4" style={{ marginBottom: '16px' }}>
-        <div className="card stat hero hover">
+        <div className="card stat hover">
           <div className="ic">▤</div>
           <div className="k">Total Applications</div>
           <div className="v num">{totalCount}</div>

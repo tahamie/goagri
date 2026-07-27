@@ -56,7 +56,7 @@ export default function BanksManager() {
 
       {/* CONSISTENT UI KPI SUMMARY CARDS */}
       <div className="grid g4" style={{ marginBottom: '16px' }}>
-        <div className="card stat hero hover">
+        <div className="card stat hover">
           <div className="ic">▤</div>
           <div className="k">Participating Banks</div>
           <div className="v num">{banks.length}</div>

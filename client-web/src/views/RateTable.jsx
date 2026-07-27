@@ -54,7 +54,7 @@ export default function RateTable() {
 
       {/* CONSISTENT UI KPI SUMMARY CARDS */}
       <div className="grid g4" style={{ marginBottom: '16px' }}>
-        <div className="card stat hero hover">
+        <div className="card stat hover">
           <div className="ic">₨</div>
           <div className="k">Configured Crops</div>
           <div className="v num">{rates.length}</div>

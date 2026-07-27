@@ -34,7 +34,7 @@ export default function BusinessRules() {
 
       {/* CONSISTENT UI KPI SUMMARY CARDS */}
       <div className="grid g4" style={{ marginBottom: '16px' }}>
-        <div className="card stat hero hover">
+        <div className="card stat hover">
           <div className="ic">ƒ</div>
           <div className="k">Configured Engine Rules</div>
           <div className="v num">3 Active</div>

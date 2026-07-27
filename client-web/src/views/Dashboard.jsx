@@ -40,7 +40,7 @@ export default function Dashboard({ onNavigate, onOpenApp }) {
       </div>
 
       <div className="grid g4">
-        <div className="card stat hero hover">
+        <div className="card stat hover">
           <div className="ic">▤</div>
           <div className="k">Total Applications</div>
           <div className="v num">{metrics.totalApplications}</div>
