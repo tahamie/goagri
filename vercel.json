@@ -19,7 +19,8 @@
       "dest": "server/src/server.js"
     },
     {
-      "handle": "filesystem"
+      "src": "/assets/(.*)",
+      "dest": "client-web/assets/$1"
     },
     {
       "src": "/(.*)",

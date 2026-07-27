@@ -8,13 +8,12 @@ let queryFn;
 
 if (dbUrl) {
   // PostgreSQL / Supabase Cloud Mode
-  console.log('🔌 Connecting to Supabase PostgreSQL Database...');
+  console.log('🔌 Connecting to PostgreSQL Database...');
   const pgPool = new Pool({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false }
   });
 
-  // Polyfill MySQL query syntax `pool.query(sql, [params])` for Postgres `$1, $2`
   queryFn = async (sql, params = []) => {
     let index = 1;
     const pgSql = sql.replace(/\?/g, () => `$${index++}`);
@@ -38,16 +37,23 @@ if (dbUrl) {
     };
   };
 } else {
-  // MySQL Local Mode
-  const mysqlPool = mysql.createPool({
-    host: process.env.DB_HOST || '127.0.0.1',
+  // MySQL Mode (Local or Aiven Cloud)
+  const host = process.env.DB_HOST || '127.0.0.1';
+  const isAiven = host.includes('aivencloud.com') || process.env.DB_SSL === 'true';
+
+  const mysqlConfig = {
+    host: host,
+    port: parseInt(process.env.DB_PORT || '3306'),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'goagri_db',
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
-  });
+    queueLimit: 0,
+    ...(isAiven ? { ssl: { rejectUnauthorized: false } } : {})
+  };
+
+  const mysqlPool = mysql.createPool(mysqlConfig);
 
   queryFn = (sql, params) => mysqlPool.query(sql, params);
   queryFn.getConnection = () => mysqlPool.getConnection();
