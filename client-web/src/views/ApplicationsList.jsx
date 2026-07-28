@@ -19,15 +19,15 @@ export default function ApplicationsList({ onNavigate, onOpenApp }) {
       (a.farmer_cnic || '').includes(filterText);
 
     if (statusFilter === 'all') return matchesText;
-    if (statusFilter === 'pending') return matchesText && a.status.includes('Pending');
-    if (statusFilter === 'approval') return matchesText && a.status.includes('Verified');
+    if (statusFilter === 'pending_kyc') return matchesText && (a.status.includes('KYC') || a.status.includes('Registration'));
+    if (statusFilter === 'pending_approval') return matchesText && (a.status.includes('Pending Approval') || a.status.includes('Verified') || a.status.includes('Selected'));
     if (statusFilter === 'submitted') return matchesText && a.status.includes('Submitted');
     return matchesText;
   });
 
   const totalCount = apps.length;
-  const pendingCount = apps.filter(a => a.status.includes('Pending')).length;
-  const approvalCount = apps.filter(a => a.status.includes('Verified')).length;
+  const pendingKycCount = apps.filter(a => a.status.includes('KYC') || a.status.includes('Registration')).length;
+  const pendingApprovalCount = apps.filter(a => a.status.includes('Pending Approval') || a.status.includes('Verified') || a.status.includes('Selected')).length;
   const submittedCount = apps.filter(a => a.status.includes('Submitted')).length;
 
   return (
@@ -50,15 +50,15 @@ export default function ApplicationsList({ onNavigate, onOpenApp }) {
         </div>
         <div className="card stat hover">
           <div className="ic">◔</div>
-          <div className="k">KYC Pending</div>
-          <div className="v num">{pendingCount}</div>
+          <div className="k">In Progress / KYC</div>
+          <div className="v num">{pendingKycCount}</div>
           <div className="d">ops officer data entry</div>
         </div>
         <div className="card stat hover">
           <div className="ic">✓</div>
-          <div className="k">Awaiting Approval</div>
-          <div className="v num">{approvalCount}</div>
-          <div className="d">supervisor review gate</div>
+          <div className="k">Pending Approval Queue</div>
+          <div className="v num">{pendingApprovalCount}</div>
+          <div className="d">supervisor review node</div>
         </div>
         <div className="card stat hover">
           <div className="ic" style={{ background: 'var(--gold-050)', color: 'var(--gold)' }}>◈</div>
@@ -71,11 +71,11 @@ export default function ApplicationsList({ onNavigate, onOpenApp }) {
       {/* SEARCH AND FILTER BAR WITH PROPER PLACEHOLDERS */}
       <div className="card" style={{ padding: '16px', marginBottom: '16px' }}>
         <div className="row" style={{ gap: '12px', flexWrap: 'wrap' }}>
-          <div className="inp sel" style={{ width: '200px' }}>
+          <div className="inp sel" style={{ width: '220px' }}>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="all">Status: All Stages</option>
-              <option value="pending">Status: Pending KYC</option>
-              <option value="approval">Status: Awaiting Approval</option>
+              <option value="pending_kyc">Status: In Progress / KYC</option>
+              <option value="pending_approval">Node: Pending Supervisor Approval</option>
               <option value="submitted">Status: Submitted to Bank</option>
             </select>
           </div>

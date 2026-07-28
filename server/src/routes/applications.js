@@ -210,11 +210,11 @@ router.post('/:id/transition', async (req, res) => {
           break;
 
         case 9:
-          nextStatus = 'Requirement Selected';
+          nextStatus = 'Pending Approval';
           await connection.query(
             `INSERT INTO financing_selections (application_id, financing_type, purpose, final_requested_amount)
              VALUES (?, ?, ?, ?)`,
-            [appId, payload?.financing_type || 'Seasonal', payload?.purpose || application.initial_financing_purpose, payload?.final_requested_amount || application.initial_financing_requirement]
+            [appId, payload?.financing_type || 'Seasonal Crop Financing', payload?.purpose || application.initial_financing_purpose, payload?.final_requested_amount || application.initial_financing_requirement]
           );
           break;
 

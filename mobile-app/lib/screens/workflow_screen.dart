@@ -4,8 +4,13 @@ import '../services/api_service.dart';
 
 class WorkflowScreen extends StatefulWidget {
   final ApplicationModel app;
+  final String userRole;
 
-  const WorkflowScreen({super.key, required this.app});
+  const WorkflowScreen({
+    super.key,
+    required this.app,
+    this.userRole = 'ops_officer',
+  });
 
   @override
   State<WorkflowScreen> createState() => _WorkflowScreenState();
@@ -15,16 +20,28 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
   late int currentStep;
   bool kycSkipToggle = true;
 
+  // Dynamic GPS state
+  final TextEditingController _latController = TextEditingController();
+  final TextEditingController _lngController = TextEditingController();
+
+  // Dropdown values
+  String selectedCrop = 'Wheat';
+  String selectedBank = 'Bank A';
+  String selectedOwnership = 'Owned';
+  String selectedMortgage = 'Clear';
+  String selectedEncumbrance = 'No Encumbrance Found';
+
   @override
   void initState() {
     super.initState();
     currentStep = widget.app.step;
+    selectedCrop = widget.app.cropType.isNotEmpty ? widget.app.cropType : 'Wheat';
+    selectedBank = widget.app.bankName.isNotEmpty ? widget.app.bankName : 'Bank A';
   }
 
   final List<String> stepTitles = [
     'Registration',
     'KYC Verification',
-    'Onboarding Approval',
     'Land Verification',
     'Collateral Verification',
     'Historical Yields',
@@ -35,9 +52,17 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
     'Submit to Bank'
   ];
 
+  void _fetchGpsLocation() {
+    setState(() {
+      _latController.text = '32.0836';
+      _lngController.text = '72.6711';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     const plumColor = Color(0xFF553575);
+    final isSupervisorOrAdmin = widget.userRole == 'supervisor' || widget.userRole == 'admin';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F3FB),
@@ -52,7 +77,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.app.farmerName, style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
-            Text('${widget.app.appCode} · ${widget.app.cropType} · ${widget.app.bankName}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+            Text('${widget.app.appCode} · $selectedCrop · $selectedBank', style: const TextStyle(color: Colors.grey, fontSize: 11)),
           ],
         ),
       ),
@@ -65,7 +90,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
             child: Column(
               children: [
                 Row(
-                  children: List.generate(11, (idx) {
+                  children: List.generate(10, (idx) {
                     final isDone = idx + 1 < currentStep;
                     final isCur = idx + 1 == currentStep;
                     return Expanded(
@@ -84,7 +109,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Step $currentStep of 11', style: const TextStyle(color: plumColor, fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    Text('Step $currentStep of 10', style: const TextStyle(color: plumColor, fontWeight: FontWeight.bold, fontSize: 12.5)),
                     Text(stepTitles[currentStep - 1], style: const TextStyle(color: Colors.grey, fontSize: 12.5, fontWeight: FontWeight.w600)),
                   ],
                 ),
@@ -131,16 +156,27 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: () async {
-                      if (currentStep < 11) {
-                        await ApiService.transitionStep(widget.app.id, currentStep, 'proceed', 'Field step complete');
+                      if (currentStep < 9) {
+                        await ApiService.transitionStep(widget.app.id, currentStep, 'proceed', 'Step updated');
                         setState(() => currentStep++);
+                      } else if (currentStep == 9) {
+                        await ApiService.transitionStep(widget.app.id, 9, 'select', 'Submitted for Supervisor Approval');
+                        if (!isSupervisorOrAdmin) {
+                          _showOfficerCompletionDialog();
+                        } else {
+                          setState(() => currentStep = 10);
+                        }
                       } else {
                         await ApiService.transitionStep(widget.app.id, 10, 'submit', 'Submitted to Bank');
-                        _showSuccessDialog();
+                        _showBankSubmissionDialog();
                       }
                     },
                     child: Text(
-                      currentStep == 11 ? 'Submit to Bank' : 'Save & Continue →',
+                      currentStep == 9 && !isSupervisorOrAdmin
+                          ? 'Submit for Approval →'
+                          : currentStep == 10
+                              ? 'Authorize & Submit to Bank →'
+                              : 'Save & Continue →',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ),
@@ -162,7 +198,6 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
           _buildTextField('Full Name', widget.app.farmerName),
           _buildTextField('CNIC', widget.app.farmerCnic),
           _buildTextField('Mobile Number', widget.app.farmerMobile),
-          _buildTextField('Target Bank', widget.app.bankName),
         ]);
 
       case 2:
@@ -181,7 +216,7 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
                   const Text('Portal Pre-Verified KYC', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   Switch(
                     value: kycSkipToggle,
-                    activeThumbColor: const Color(0xFF553575),
+                    activeColor: const Color(0xFF553575),
                     onChanged: (val) => setState(() => kycSkipToggle = val),
                   ),
                 ],
@@ -210,21 +245,66 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
           ],
         );
 
-      case 4:
+      case 3:
         return _buildCard([
           const Text('Land Verification', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           _buildTextField('Cultivated Area (acres)', '${widget.app.cultivatedArea}'),
-          _buildTextField('GPS Coordinates', '32.0836° N, 72.6711° E'),
+          _buildDropdown('Ownership Status', selectedOwnership, ['Owned', 'Leased', 'Jointly Owned'], (val) {
+            if (val != null) setState(() => selectedOwnership = val);
+          }),
+          const SizedBox(height: 8),
+          const Text('GPS Coordinates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _latController,
+                  decoration: InputDecoration(
+                    hintText: 'Latitude (32.0836)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _lngController,
+                  decoration: InputDecoration(
+                    hintText: 'Longitude (72.6711)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF3EEF9)),
-            onPressed: () {},
-            icon: const Icon(Icons.location_on, color: Color(0xFF553575)),
-            label: const Text('Tag on Map', style: TextStyle(color: Color(0xFF553575), fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF3EEF9),
+              minimumSize: const Size(double.infinity, 44),
+            ),
+            onPressed: _fetchGpsLocation,
+            icon: const Icon(Icons.my_location, color: Color(0xFF553575), size: 18),
+            label: const Text('📍 Fetch Current Location', style: TextStyle(color: Color(0xFF553575), fontWeight: FontWeight.bold)),
           ),
         ]);
 
-      case 7:
+      case 4:
+        return _buildCard([
+          const Text('Collateral Verification', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildDropdown('Mortgage Status', selectedMortgage, ['Clear', 'Mortgaged', 'Under Verification'], (val) {
+            if (val != null) setState(() => selectedMortgage = val);
+          }),
+          const SizedBox(height: 12),
+          _buildDropdown('Encumbrance Status', selectedEncumbrance, ['No Encumbrance Found', 'Encumbrance Found', 'Under Verification'], (val) {
+            if (val != null) setState(() => selectedEncumbrance = val);
+          }),
+        ]);
+
+      case 6:
         final maunds = widget.app.cultivatedArea * 45;
         final cropVal = maunds * 3900;
         return Column(
@@ -232,8 +312,11 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
             _buildCard([
               const Text('Financing Crop', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-              _buildTextField('Crop Type', widget.app.cropType),
-              _buildTextField('Expected Yield (Maunds)', '$maunds'),
+              _buildDropdown('Target Crop Type', selectedCrop, ['Wheat', 'Cotton', 'Maize', 'Rice', 'Sugarcane'], (val) {
+                if (val != null) setState(() => selectedCrop = val);
+              }),
+              const SizedBox(height: 12),
+              _buildTextField('Cultivated Area (acres)', '${widget.app.cultivatedArea}'),
             ]),
             const SizedBox(height: 14),
             Container(
@@ -253,6 +336,39 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
             ),
           ],
         );
+
+      case 8:
+        return _buildCard([
+          const Text('Credit Scoring', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE7F5EE),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Computed Credit Score', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('726 / 900 (Approve Band)', style: TextStyle(color: Color(0xFF2E9E6B), fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text('✓ Credit score calculated automatically. No intermediate approval required.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        ]);
+
+      case 9:
+        return _buildCard([
+          const Text('Financing Selection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildDropdown('Target Bank', selectedBank, ['Bank A', 'Bank B', 'Bank C', 'HBL', 'UBL', 'Meezan Bank'], (val) {
+            if (val != null) setState(() => selectedBank = val);
+          }),
+          const SizedBox(height: 12),
+          _buildTextField('Final Requested Amount (PKR)', '${widget.app.initialRequirement}'),
+        ]);
 
       default:
         return _buildCard([
@@ -288,7 +404,54 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
     );
   }
 
-  void _showSuccessDialog() {
+  Widget _buildDropdown(String label, String currentVal, List<String> items, ValueChanged<String?> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        value: currentVal,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  void _showOfficerCompletionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 32,
+              backgroundColor: Color(0xFFE7F5EE),
+              child: Icon(Icons.check, color: Color(0xFF2E9E6B), size: 36),
+            ),
+            const SizedBox(height: 16),
+            const Text('Submitted for Approval!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Application ${widget.app.appCode} has been submitted to the Supervisor queue for review.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF553575)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+              child: const Text('Back to Home', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showBankSubmissionDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -299,12 +462,12 @@ class _WorkflowScreenState extends State<WorkflowScreen> {
             const CircleAvatar(
               radius: 36,
               backgroundColor: Color(0xFFE7F5EE),
-              child: Icon(Icons.check, color: Color(0xFF2E9E6B), size: 40),
+              child: Icon(Icons.account_balance, color: Color(0xFF2E9E6B), size: 40),
             ),
             const SizedBox(height: 16),
-            Text('Submitted to ${widget.app.bankName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Authorized & Submitted to $selectedBank', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('Application ${widget.app.appCode} has been packaged and sent to the bank.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            Text('Application ${widget.app.appCode} has been authorized and submitted to the bank.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 13)),
             const SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF553575)),
