@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchApplicationDetails, transitionWorkflow } from '../services/api';
+import { fetchApplicationDetails, transitionWorkflow, addHistoricalYield } from '../services/api';
 
 const STEPS = [
   { n: 1, title: 'Registration', role: 'ops', type: 'MAKER (Field Registration)' },
@@ -36,7 +36,14 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
   const [encumbranceStatus, setEncumbranceStatus] = useState('No Encumbrance Found');
   const [submissionMode, setSubmissionMode] = useState('API Integration');
 
-  const loadData = () => {
+  // Step 5: Historical Yield Modal & Form State
+  const [showYieldModal, setShowYieldModal] = useState(false);
+  const [newYieldCrop, setNewYieldCrop] = useState('Wheat');
+  const [newYieldMaunds, setNewYieldMaunds] = useState('');
+  const [newPlantingDate, setNewPlantingDate] = useState('');
+  const [newHarvestDate, setNewHarvestDate] = useState('');
+
+  const loadData = (isInitial = false) => {
     if (!appId) return;
     fetchApplicationDetails(appId).then(res => {
       if (res.success) {
@@ -44,27 +51,29 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
         if (res.application.crop_type) setCropType(res.application.crop_type);
         if (res.application.bank_name) setBankName(res.application.bank_name);
 
-        const statusMap = {
-          'KYC Pending': 2,
-          'KYC Verified': 3,
-          'Land Verified': 4,
-          'Collateral Verified': 5,
-          'Yield Calculated': 6,
-          'Eligibility Calculated': 7,
-          'Credit Score Generated': 8,
-          'Requirement Selected': 9,
-          'Pending Approval': 10,
-          'Submitted to Bank': 10
-        };
-        if (statusMap[res.application.status]) {
-          setCurrentStep(statusMap[res.application.status]);
+        if (isInitial) {
+          const statusMap = {
+            'KYC Pending': 2,
+            'KYC Verified': 3,
+            'Land Verified': 4,
+            'Collateral Verified': 5,
+            'Yield Calculated': 6,
+            'Eligibility Calculated': 7,
+            'Credit Score Generated': 8,
+            'Requirement Selected': 9,
+            'Pending Approval': 10,
+            'Submitted to Bank': 10
+          };
+          if (statusMap[res.application.status]) {
+            setCurrentStep(statusMap[res.application.status]);
+          }
         }
       }
     }).catch(console.error);
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true);
   }, [appId]);
 
   if (!data) {
@@ -91,6 +100,33 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
     }, 500);
   };
 
+  const handleAddYield = async (e) => {
+    e.preventDefault();
+    if (!newYieldMaunds || isNaN(newYieldMaunds) || Number(newYieldMaunds) <= 0) {
+      alert('Please enter a valid yield maunds amount.');
+      return;
+    }
+    try {
+      const res = await addHistoricalYield(app.id, {
+        crop_type: newYieldCrop,
+        yield_maunds: Number(newYieldMaunds),
+        planting_date: newPlantingDate || null,
+        harvest_date: newHarvestDate || null
+      });
+      if (res.success) {
+        setShowYieldModal(false);
+        setNewYieldMaunds('');
+        setNewPlantingDate('');
+        setNewHarvestDate('');
+        loadData(false);
+      } else {
+        alert(res.error || 'Failed to add yield record');
+      }
+    } catch (err) {
+      alert('Error adding yield: ' + err.message);
+    }
+  };
+
   const handleAction = async (action, targetStep) => {
     setLoading(true);
     try {
@@ -102,9 +138,8 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
       });
       if (res.success) {
         setRemarks('');
-        loadData();
+        loadData(false);
 
-        // If Officer finishes Step 9 (Financing Selection)
         if (currentStep === 9 && action === 'select' && !isSupervisorOrAdmin) {
           setShowSuccessModal(true);
         } else if (targetStep) {
@@ -348,6 +383,7 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
         );
 
       case 5:
+        const yieldsList = data.historicalYields || [];
         return (
           <div className="card">
             {restrictedBanner}
@@ -358,17 +394,34 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
               </div>
               {badge}
             </div>
-            <div className="grid g2e" style={{ marginBottom: '16px' }}>
-              <div className="card" style={{ background: 'var(--canvas)' }}>
-                <div className="spread"><b>Wheat (Rabi 2024)</b><span className="pill pri">44 maund/acre</span></div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>Harvested Apr 2025 · Verified by Field Survey</div>
+
+            {/* DYNAMIC HISTORICAL YIELDS LIST */}
+            {yieldsList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)', background: 'var(--canvas)', borderRadius: '12px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '6px' }}>🌾</div>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--ink)' }}>No historical yields recorded yet</div>
+                <p style={{ fontSize: '12px', margin: '4px 0 12px' }}>Click "+ Add Historical Yield" below to record past harvest yields for this farmer.</p>
               </div>
-              <div className="card" style={{ background: 'var(--canvas)' }}>
-                <div className="spread"><b>Cotton (Kharif 2024)</b><span className="pill pri">28 maund/acre</span></div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>Harvested Oct 2024 · Verified by Market Receipts</div>
+            ) : (
+              <div className="grid g2e" style={{ marginBottom: '16px' }}>
+                {yieldsList.map(y => (
+                  <div key={y.id} className="card" style={{ background: 'var(--canvas)', border: '1px solid var(--line)' }}>
+                    <div className="spread">
+                      <b>{y.crop_type}</b>
+                      <span className="pill pri">{y.yield_maunds} maund/acre</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>
+                      {y.planting_date ? `Planted: ${y.planting_date.slice(0, 10)}` : 'Recorded'} {y.harvest_date ? `· Harvested: ${y.harvest_date.slice(0, 10)}` : ''}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="row" style={{ justifyContent: 'flex-end', marginTop: '16px', gap: '10px' }}>
+            )}
+
+            <div className="row" style={{ justifyContent: 'space-between', marginTop: '16px', gap: '10px' }}>
+              <button className="btn sec" type="button" onClick={() => setShowYieldModal(true)} disabled={!canExecuteAction}>
+                ＋ Add Historical Yield
+              </button>
               <button className="btn ok" disabled={loading || !canExecuteAction} onClick={() => handleAction('continue', 6)}>
                 {!canExecuteAction ? '🔒 Officer Action Restricted' : 'Save Yields & Calculate Crop Value →'}
               </button>
@@ -609,6 +662,65 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
       </div>
 
       {renderPanel(currentStep)}
+
+      {/* STEP 5: ADD HISTORICAL YIELD MODAL */}
+      {showYieldModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <form onSubmit={handleAddYield} className="card" style={{ width: '440px', maxWidth: '90%', padding: '24px', background: '#fff', borderRadius: '18px' }}>
+            <div className="spread" style={{ marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>Add Historical Yield Entry</h3>
+              <button type="button" className="btn ghost sm" onClick={() => setShowYieldModal(false)}>✕</button>
+            </div>
+
+            <div className="field">
+              <label>Crop Type <span className="req">*</span></label>
+              <div className="inp sel">
+                <select value={newYieldCrop} onChange={e => setNewYieldCrop(e.target.value)}>
+                  <option value="Wheat">Wheat</option>
+                  <option value="Cotton">Cotton</option>
+                  <option value="Maize">Maize</option>
+                  <option value="Rice">Rice</option>
+                  <option value="Sugarcane">Sugarcane</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="field">
+              <label>Yield Amount (Maunds per Acre) <span className="req">*</span></label>
+              <div className="inp">
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder="e.g. 44" 
+                  value={newYieldMaunds} 
+                  onChange={e => setNewYieldMaunds(e.target.value)} 
+                  required 
+                />
+              </div>
+            </div>
+
+            <div className="grid g2e">
+              <div className="field">
+                <label>Planting Date</label>
+                <div className="inp">
+                  <input type="date" value={newPlantingDate} onChange={e => setNewPlantingDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="field">
+                <label>Harvest Date</label>
+                <div className="inp">
+                  <input type="date" value={newHarvestDate} onChange={e => setNewHarvestDate(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="row" style={{ justifyContent: 'flex-end', marginTop: '20px', gap: '10px' }}>
+              <button type="button" className="btn ghost" onClick={() => setShowYieldModal(false)}>Cancel</button>
+              <button type="submit" className="btn ok">＋ Add Record</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* OFFICER SUCCESS POPUP MODAL */}
       {showSuccessModal && (

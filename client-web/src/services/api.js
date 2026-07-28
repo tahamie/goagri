@@ -63,6 +63,15 @@ export async function transitionWorkflow(appId, data) {
   return res.json();
 }
 
+export async function addHistoricalYield(appId, data) {
+  const res = await fetch(`${API_BASE}/applications/${appId}/historical-yield`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
 export async function fetchBusinessRules() {
   const res = await fetch(`${API_BASE}/rules`, {
     headers: getAuthHeaders()

@@ -1,0 +1,6 @@
+mobile-app/
+*.apk
+*.dmg
+*.zip
+.git/
+node_modules/

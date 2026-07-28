@@ -113,6 +113,30 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Add historical yield record for a farmer application
+router.post('/:id/historical-yield', async (req, res) => {
+  try {
+    const appId = req.params.id;
+    const { crop_type, yield_maunds, planting_date, harvest_date } = req.body;
+
+    const [apps] = await pool.query('SELECT farmer_id FROM financing_applications WHERE id = ?', [appId]);
+    if (apps.length === 0) return res.status(404).json({ success: false, error: 'Application not found.' });
+
+    const farmerId = apps[0].farmer_id;
+    await pool.query(
+      `INSERT INTO historical_yields (farmer_id, crop_type, yield_maunds, planting_date, harvest_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [farmerId, crop_type || 'Wheat', yield_maunds || 40, planting_date || null, harvest_date || null]
+    );
+
+    const [updated] = await pool.query('SELECT * FROM historical_yields WHERE farmer_id = ? ORDER BY id DESC', [farmerId]);
+    res.json({ success: true, message: 'Historical yield record added successfully.', historicalYields: updated });
+  } catch (error) {
+    console.error('Add historical yield error:', error);
+    res.status(500).json({ success: false, error: 'Failed to add historical yield record.' });
+  }
+});
+
 // Workflow Transition Handler (Step 2 to Step 10)
 router.post('/:id/transition', async (req, res) => {
   const connection = await pool.getConnection();
