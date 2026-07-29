@@ -121,7 +121,7 @@ export default function App() {
         <div className="navgroup">
           <div className="lbl">Application Workflow</div>
           <button className={`navbtn ${activeScreen === 'workflow' ? 'active' : ''}`} onClick={() => setActiveScreen('workflow')}>
-            <span className="n">10</span> 10-Step Workflow
+            <span className="n">📋</span> Farmer KYC Onboarding
           </button>
         </div>
 

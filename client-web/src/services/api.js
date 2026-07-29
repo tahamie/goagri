@@ -72,6 +72,23 @@ export async function addHistoricalYield(appId, data) {
   return res.json();
 }
 
+export async function updateHistoricalYield(appId, yieldId, data) {
+  const res = await fetch(`${API_BASE}/applications/${appId}/historical-yield/${yieldId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+export async function deleteHistoricalYield(appId, yieldId) {
+  const res = await fetch(`${API_BASE}/applications/${appId}/historical-yield/${yieldId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  return res.json();
+}
+
 export async function fetchBusinessRules() {
   const res = await fetch(`${API_BASE}/rules`, {
     headers: getAuthHeaders()

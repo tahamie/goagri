@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { registerFarmer } from '../services/api';
 
+const PURPOSE_OPTIONS = [
+  'Crop Seeds & Inputs',
+  'Fertilizers & Pesticides',
+  'Solar Tube-Well Irrigation',
+  'Land Preparation & Tillage',
+  'Farm Machinery & Implements',
+  'Harvesting & Storage'
+];
+
 export default function NewFarmer({ onNavigate, onOpenApp }) {
   const [formData, setFormData] = useState({
     full_name: '',
@@ -11,13 +20,30 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
     crop_type: 'Wheat',
     cultivated_area: '',
     bank_id: 1,
-    initial_financing_requirement: '',
-    initial_financing_purpose: ''
+    initial_financing_requirement: ''
   });
+
+  const [selectedPurposes, setSelectedPurposes] = useState(['Crop Seeds & Inputs', 'Fertilizers & Pesticides']);
+  const [cnicFile, setCnicFile] = useState(null);
+  const [supportingFile, setSupportingFile] = useState(null);
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [createdAppId, setCreatedAppId] = useState(null);
+  const [createdFarmerName, setCreatedFarmerName] = useState('');
+  const [showPromptModal, setShowPromptModal] = useState(false);
+
+  const handleAddPurpose = (e) => {
+    const val = e.target.value;
+    if (val && !selectedPurposes.includes(val)) {
+      setSelectedPurposes([...selectedPurposes, val]);
+    }
+  };
+
+  const handleRemovePurpose = (purpose) => {
+    setSelectedPurposes(selectedPurposes.filter(p => p !== purpose));
+  };
 
   const validateForm = () => {
     const errs = {};
@@ -50,8 +76,8 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
       errs.initial_financing_requirement = 'Financing requirement must be a valid amount in PKR.';
     }
 
-    if (!formData.initial_financing_purpose || formData.initial_financing_purpose.trim().length < 3) {
-      errs.initial_financing_purpose = 'Financing purpose is required.';
+    if (selectedPurposes.length === 0) {
+      errs.initial_financing_purpose = 'Please select at least one financing purpose LOV.';
     }
 
     setErrors(errs);
@@ -68,9 +94,15 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
 
     setLoading(true);
     try {
-      const res = await registerFarmer(formData);
+      const payload = {
+        ...formData,
+        initial_financing_purpose: selectedPurposes.join(', ')
+      };
+      const res = await registerFarmer(payload);
       if (res.success) {
-        onOpenApp(res.application_id);
+        setCreatedAppId(res.application_id);
+        setCreatedFarmerName(formData.full_name);
+        setShowPromptModal(true);
       } else {
         setServerError(res.error || 'Failed to register farmer');
       }
@@ -199,6 +231,10 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
                   <option value="1">Bank A</option>
                   <option value="2">Bank B</option>
                   <option value="3">Bank C</option>
+                  <option value="4">Bank D</option>
+                  <option value="5">HBL</option>
+                  <option value="6">UBL</option>
+                  <option value="7">Meezan Bank</option>
                 </select>
               </div>
             </div>
@@ -217,30 +253,69 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
             </div>
           </div>
 
-          <div className="field">
-            <label>Financing Purpose <span className="req">*</span></label>
-            <div className="inp" style={{ borderColor: errors.initial_financing_purpose ? 'var(--red)' : undefined }}>
-              <input 
-                type="text" 
-                placeholder="e.g. Purchase of seeds and fertilizers for wheat crop"
-                value={formData.initial_financing_purpose} 
-                onChange={e => setFormData({ ...formData, initial_financing_purpose: e.target.value })} 
-              />
+          {/* MULTI-LOV FINANCING PURPOSE */}
+          <div className="field" style={{ marginTop: '12px' }}>
+            <label>Financing Purpose (Multi-Select LOV) <span className="req">*</span></label>
+            <div className="inp sel" style={{ borderColor: errors.initial_financing_purpose ? 'var(--red)' : undefined }}>
+              <select value="" onChange={handleAddPurpose}>
+                <option value="">+ Select Financing Purpose LOV Option...</option>
+                {PURPOSE_OPTIONS.map(opt => (
+                  <option key={opt} value={opt} disabled={selectedPurposes.includes(opt)}>
+                    {selectedPurposes.includes(opt) ? `✓ ${opt} (Added)` : opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* TAG CHIPS */}
+            <div className="row" style={{ flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+              {selectedPurposes.map(purpose => (
+                <span key={purpose} className="pill pri" style={{ padding: '6px 12px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  {purpose}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemovePurpose(purpose)}
+                    style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 800, padding: 0 }}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
             </div>
             {errors.initial_financing_purpose && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px' }}>{errors.initial_financing_purpose}</div>}
           </div>
         </div>
 
+        {/* WORKING DOCUMENT UPLOAD SECTION */}
         <div className="card">
           <div className="sectitle"><span className="ic">⬆</span> Documents</div>
           <div className="grid g2e">
-            <div className="upload">
-              ⬆ Upload CNIC (front / back)
-              <small>JPG or PDF · up to 5MB</small>
+            <div className="field">
+              <label>CNIC Copy (Front / Back)</label>
+              <label className="upload" style={{ cursor: 'pointer', display: 'block' }}>
+                <input 
+                  type="file" 
+                  accept="image/*,.pdf" 
+                  style={{ display: 'none' }} 
+                  onChange={e => e.target.files[0] && setCnicFile(e.target.files[0].name)}
+                />
+                ⬆ {cnicFile ? `✓ File Selected: ${cnicFile}` : 'Upload CNIC (front / back)'}
+                <small>{cnicFile ? 'Ready to upload' : 'JPG or PDF · up to 5MB'}</small>
+              </label>
             </div>
-            <div className="upload">
-              ⬆ Upload supporting documents
-              <small>Optional</small>
+
+            <div className="field">
+              <label>Supporting Land / Income Documents</label>
+              <label className="upload" style={{ cursor: 'pointer', display: 'block' }}>
+                <input 
+                  type="file" 
+                  accept="image/*,.pdf" 
+                  style={{ display: 'none' }} 
+                  onChange={e => e.target.files[0] && setSupportingFile(e.target.files[0].name)}
+                />
+                ⬆ {supportingFile ? `✓ File Selected: ${supportingFile}` : 'Upload supporting documents'}
+                <small>{supportingFile ? 'Ready to upload' : 'Optional'}</small>
+              </label>
             </div>
           </div>
         </div>
@@ -252,6 +327,36 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
           </button>
         </div>
       </form>
+
+      {/* POST-REGISTRATION LOAN ONBOARDING MODAL PROMPT */}
+      {showPromptModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '460px', maxWidth: '90%', padding: '32px', textAlign: 'center', background: '#fff', borderRadius: '24px' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--green-050)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', margin: '0 auto 16px' }}>✓</div>
+            <h2 style={{ fontSize: '22px', margin: '0 0 8px' }}>Farmer Registered Successfully!</h2>
+            <p style={{ color: 'var(--muted)', fontSize: '14px', lineHeight: 1.5, margin: '8px 0 24px' }}>
+              Farmer <b>{createdFarmerName}</b> has been registered in the database.<br/>
+              Would you like to start <b>Farmer KYC Onboarding</b> for loan financing now?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                className="btn ok" 
+                style={{ width: '100%', padding: '12px' }} 
+                onClick={() => { setShowPromptModal(false); onOpenApp(createdAppId); }}
+              >
+                🚀 Start Loan Onboarding Now →
+              </button>
+              <button 
+                className="btn ghost" 
+                style={{ width: '100%', padding: '12px' }} 
+                onClick={() => { setShowPromptModal(false); onNavigate('applications'); }}
+              >
+                📋 Go to Applications Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

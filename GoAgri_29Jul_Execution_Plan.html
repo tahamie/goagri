@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GoAgri Platform — 29Jul Feedback Execution Plan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --primary-light: #eeeffe;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 40px;
+      margin-bottom: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      color: #a5b4fc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 12px;
+      background: linear-gradient(to right, #ffffff, #c7d2fe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-desc {
+      font-size: 16px;
+      color: #c7d2fe;
+      max-width: 750px;
+      line-height: 1.6;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 12px;
+      color: #93c5fd;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 4px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f8fafc;
+    }
+
+    .card-title icon {
+      font-size: 22px;
+    }
+
+    .feedback-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .item-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 14px;
+      padding: 22px;
+      transition: all 0.2s ease;
+    }
+
+    .item-box:hover {
+      border-color: #6366f1;
+      transform: translateY(-2px);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .item-num {
+      font-size: 13px;
+      font-weight: 800;
+      color: #818cf8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-tag {
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status-tag.plan {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .item-feedback {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .item-solution {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      background: rgba(30, 41, 59, 0.5);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .item-solution b {
+      color: #e2e8f0;
+    }
+
+    .tech-pill {
+      display: inline-block;
+      background: rgba(255,255,255,0.08);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #38bdf8;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .phase-card {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .phase-step {
+      font-size: 12px;
+      font-weight: 800;
+      color: #34d399;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .phase-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+
+    .phase-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    a.link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--primary);
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 100px;
+      font-weight: 700;
+      font-size: 14px;
+      margin-top: 12px;
+      transition: background 0.2s;
+    }
+
+    a.link-btn:hover {
+      background: var(--primary-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">📋 Client Technical Execution Plan</div>
+      <h1>GoAgri Digital Financing Platform</h1>
+      <div class="header-desc">
+        Comprehensive implementation plan addressing all 6 feedback items from the <b>29-Jul Client Feedback Document</b> (`GoAgri_29Jul_Feedback.docx`).
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Document Date</span>
+          <span class="meta-val">July 29, 2026</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Target System</span>
+          <span class="meta-val">Web Admin Portal &amp; REST API</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Live Deployment</span>
+          <span class="meta-val">goagri-platform.vercel.app</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Execution Status</span>
+          <span class="meta-val" style="color: #34d399;">Ready for Execution</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- EXECUTIVE SUMMARY -->
+    <div class="card">
+      <div class="card-title">💡 Executive Summary</div>
+      <p style="color: var(--muted); font-size: 15px; line-height: 1.7;">
+        Following the successful restructuring of the 10-step onboarding workflow and role segregation, this plan details the technical resolution for the 6 feedback points highlighted in the 29-Jul feedback document. This includes implementing a multi-select List of Values (LOV) for financing purpose, dynamic post-registration loan onboarding modal, workflow step resumption, working document uploaders, historical yield edit/delete functionality, and fixing the Step 9 supervisor submission handler.
+      </p>
+    </div>
+
+    <!-- DETAILED FEEDBACK RESOLUTION PLAN -->
+    <div class="card">
+      <div class="card-title">🎯 Detailed Implementation Plan</div>
+
+      <div class="feedback-grid">
+        <!-- ITEM 1 -->
+        <div class="item-box">
+          <div class="item-header">
+            <span class="item-num">Item #1 · Farmer Registration Form</span>
+            <span class="status-tag plan">Planned Fix</span>
+          </div>
+          <div class="item-feedback">
+            "In Financing Purpose field, give dropdown LOVs. Multi LOVs can be selected and removed if selected. Also, unable to upload docs during registration."
+          </div>
+          <div class="item-solution">
+            <b>Technical Execution Plan:</b><br/>
+            1. Replace single text input in <span class="tech-pill">NewFarmerView.jsx</span> with an interactive Multi-Select LOV dropdown containing predefined purpose options (<i>Crop Seeds &amp; Input, Fertilizers &amp; Pesticides, Solar Tube-well, Land Prep, Implements</i>).<br/>
+            2. Add removable tag chips with <span class="tech-pill">✕</span> delete buttons for easy tag management.<br/>
+            3. Enable active drag-and-drop file upload handlers for CNIC Front/Back &amp; supporting documents during initial registration.
+          </div>
+        </div>
+
+        <!-- ITEM 2 -->
+        <div class="item-box">
+          <div class="item-header">
+            <span class="item-num">Item #2 · Onboarding Modal &amp; Sidebar Navigation</span>
+            <span class="status-tag plan">Planned Fix</span>
+          </div>
+          <div class="item-feedback">
+            "Once farmer is registered, pop up should be shown if you want to onboard Farmer now for loan or not. Then that 10-step workflow will open. Rename it to 'Farmer KYC Onboarding'."
+          </div>
+          <div class="item-solution">
+            <b>Technical Execution Plan:</b><br/>
+            1. Add post-registration modal prompt: <i>"Farmer Registered Successfully! Would you like to start Loan Onboarding for this farmer now?"</i> with direct action buttons (<code>Start Loan Onboarding Now</code> vs <code>Go to Applications Queue</code>).<br/>
+            2. Rename sidebar navigation menu item from <code>'10-Step Workflow'</code> to <b><code>'Farmer KYC Onboarding'</code></b> in <span class="tech-pill">App.jsx</span>.
+          </div>
+        </div>
+
+        <!-- ITEM 3 -->
+        <div class="item-box">
+          <div class="item-header">
+            <span class="item-num">Item #3 · Document Uploads on Steps 2 &amp; 3</span>
+            <span class="status-tag plan">Planned Fix</span>
+          </div>
+          <div class="item-feedback">
+            "Unable to upload docs on step 2 (KYC) and step 3 (Land Verification)."
+          </div>
+          <div class="item-solution">
+            <b>Technical Execution Plan:</b><br/>
+            1. Attach working file inputs &amp; state handlers for eCIB report upload on <b>Step 2 (KYC)</b>.<br/>
+            2. Attach working file inputs &amp; state handlers for Fard / Land Registry document upload on <b>Step 3 (Land Verification)</b>.<br/>
+            3. Show green uploaded badge feedback once files are selected.
+          </div>
+        </div>
+
+        <!-- ITEM 4 -->
+        <div class="item-box">
+          <div class="item-header">
+            <span class="item-num">Item #4 · Workflow Resumption &amp; State Persistence</span>
+            <span class="status-tag plan">Planned Fix</span>
+          </div>
+          <div class="item-feedback">
+            "I left the onboarding and closed. When I opened it from Applications it opened from Step 2. However it should open from where I left (step)."
+          </div>
+          <div class="item-solution">
+            <b>Technical Execution Plan:</b><br/>
+            1. Update <span class="tech-pill">WorkflowView.jsx</span> initial state logic to resolve the saved application status and automatically set <code>currentStep</code> to the farmer's saved progress step.<br/>
+            2. Store active step context so reopening any application from the queue resumes seamlessly at the exact step left off.
+          </div>
+        </div>
+
+        <!-- ITEM 5 -->
+        <div class="item-box">
+          <div class="item-header">
+            <span class="item-num">Item #5 · Historical Yields Edit &amp; Delete (Step 5)</span>
+            <span class="status-tag plan">Planned Fix</span>
+          </div>
+          <div class="item-feedback">
+            "When historical yield is added, option to delete and edit should be given."
+          </div>
+          <div class="item-solution">
+            <b>Technical Execution Plan:</b><br/>
+            1. Add <b>Edit (✏️)</b> and <b>Delete (🗑️)</b> buttons on every historical yield card in Step 5.<br/>
+            2. Implement backend routes <span class="tech-pill">PUT /api/applications/:id/historical-yield/:yieldId</span> and <span class="tech-pill">DELETE /api/applications/:id/historical-yield/:yieldId</span> in <span class="tech-pill">applications.js</span>.<br/>
+            3. Connect edit modal to update yield maunds &amp; harvest dates dynamically.
+          </div>
+        </div>
+
+        <!-- ITEM 6 -->
+        <div class="item-box">
+          <div class="item-header">
+            <span class="item-num">Item #6 · Step 9 Transition Submission Handler</span>
+            <span class="status-tag plan">Planned Fix</span>
+          </div>
+          <div class="item-feedback">
+            "After submission from Step 9, it shows error 'Could not process workflow update. Please try again'."
+          </div>
+          <div class="item-solution">
+            <b>Technical Execution Plan:</b><br/>
+            1. Update Step 9 transition logic in <span class="tech-pill">applications.js</span> and <span class="tech-pill">WorkflowView.jsx</span> to handle financing requirement selection cleanly.<br/>
+            2. Ensure status transitions to <code>Pending Approval</code> without throwing alert errors and displays officer completion modal.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXECUTION TIMELINE -->
+    <div class="card">
+      <div class="card-title">⚡ Execution Timeline</div>
+      <div class="timeline">
+        <div class="phase-card">
+          <div class="phase-step">Phase 1 · UI &amp; Form Logic</div>
+          <div class="phase-title">Multi-LOV &amp; Onboarding Prompt</div>
+          <div class="phase-desc">Build multi-select purpose chips in Registration &amp; add post-registration loan onboarding modal.</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-step">Phase 2 · Workflow Engine</div>
+          <div class="phase-title">Step Resumption &amp; Yield Actions</div>
+          <div class="phase-desc">Fix step resumption logic when launching from queue; add edit/delete APIs for Step 5 historical yields.</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-step">Phase 3 · Document &amp; API Fixes</div>
+          <div class="phase-title">Uploaders &amp; Step 9 Transition</div>
+          <div class="phase-desc">Connect document uploaders on Steps 2 &amp; 3; resolve Step 9 supervisor submission transition route.</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>GoAgri Digital Financing Platform &copy; 2026 · Confidential Client Handoff Document</p>
+      <a href="https://goagri-platform.vercel.app" target="_blank" class="link-btn">🚀 Open Live Production Web Portal →</a>
+    </footer>
+  </div>
+</body>
+</html>
