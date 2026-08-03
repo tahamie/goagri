@@ -98,18 +98,22 @@ router.post('/', async (req, res) => {
     await connection.beginTransaction();
 
     const cleanCNIC = cnic.replace(/[^0-9]/g, '');
+    const cleanMobile = mobile.replace(/[^0-9]/g, '');
 
-    // Check duplicate CNIC
+    // Check existing farmer by CNIC or Mobile
     let farmerId;
-    const [existing] = await connection.query('SELECT id FROM farmers WHERE cnic = ?', [cleanCNIC]);
-    
-    if (existing.length > 0) {
-      farmerId = existing[0].id;
+    const [existingByCnic] = await connection.query('SELECT id FROM farmers WHERE cnic = ?', [cleanCNIC]);
+    const [existingByMobile] = await connection.query('SELECT id FROM farmers WHERE mobile = ?', [cleanMobile]);
+
+    if (existingByCnic.length > 0) {
+      farmerId = existingByCnic[0].id;
+    } else if (existingByMobile.length > 0) {
+      farmerId = existingByMobile[0].id;
     } else {
       const [fRes] = await connection.query(
         `INSERT INTO farmers (full_name, cnic, mobile, date_of_birth, address, onboarding_status, registered_by)
          VALUES (?, ?, ?, ?, ?, 'pending', ?)`,
-        [full_name.trim(), cleanCNIC, mobile.replace(/[^0-9]/g, ''), date_of_birth || '1985-01-01', address.trim(), registered_by]
+        [full_name.trim(), cleanCNIC, cleanMobile, date_of_birth || '1985-01-01', address.trim(), registered_by]
       );
       farmerId = fRes.insertId;
     }
@@ -143,7 +147,10 @@ router.post('/', async (req, res) => {
   } catch (error) {
     await connection.rollback();
     console.error('Farmer registration error:', error);
-    res.status(500).json({ success: false, error: 'Could not register farmer profile. Please check information and try again.' });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Could not register farmer profile. Please check information and try again.' 
+    });
   } finally {
     connection.release();
   }
