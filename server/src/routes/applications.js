@@ -113,6 +113,122 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Edit application & farmer info (Point 3 Fix)
+router.put('/:id', async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const appId = req.params.id;
+    const {
+      full_name,
+      mobile,
+      address,
+      crop_type,
+      cultivated_area,
+      bank_id,
+      initial_financing_requirement,
+      initial_financing_purpose
+    } = req.body;
+
+    await connection.beginTransaction();
+
+    const [apps] = await connection.query('SELECT farmer_id FROM financing_applications WHERE id = ?', [appId]);
+    if (apps.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, error: 'Application not found.' });
+    }
+
+    const farmerId = apps[0].farmer_id;
+
+    // Update farmer info if provided
+    if (full_name || mobile || address) {
+      const cleanMobile = mobile ? mobile.replace(/[^0-9]/g, '') : null;
+      await connection.query(
+        `UPDATE farmers SET 
+           full_name = COALESCE(?, full_name), 
+           mobile = COALESCE(?, mobile), 
+           address = COALESCE(?, address) 
+         WHERE id = ?`,
+        [full_name ? full_name.trim() : null, cleanMobile, address ? address.trim() : null, farmerId]
+      );
+    }
+
+    // Update application info
+    const reqAmtNum = initial_financing_requirement ? parseFloat(initial_financing_requirement) : null;
+    const areaNum = cultivated_area ? parseFloat(cultivated_area) : null;
+
+    await connection.query(
+      `UPDATE financing_applications SET 
+         crop_type = COALESCE(?, crop_type), 
+         cultivated_area = COALESCE(?, cultivated_area), 
+         bank_id = COALESCE(?, bank_id),
+         initial_financing_requirement = COALESCE(?, initial_financing_requirement),
+         initial_financing_purpose = COALESCE(?, initial_financing_purpose)
+       WHERE id = ?`,
+      [crop_type, areaNum, bank_id, reqAmtNum, initial_financing_purpose, appId]
+    );
+
+    await connection.commit();
+
+    // Fetch updated record
+    const [updatedApps] = await pool.query(`
+      SELECT a.*, f.full_name as farmer_name, f.cnic as farmer_cnic, f.mobile as farmer_mobile, f.address as farmer_address, b.name as bank_name
+      FROM financing_applications a
+      JOIN farmers f ON a.farmer_id = f.id
+      JOIN banks b ON a.bank_id = b.id
+      WHERE a.id = ?
+    `, [appId]);
+
+    res.json({
+      success: true,
+      message: 'Application details updated successfully.',
+      application: updatedApps[0]
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Update application error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update application details.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// Delete application (Point 4 Fix)
+router.delete('/:id', async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const appId = req.params.id;
+    await connection.beginTransaction();
+
+    // Delete associated child records
+    await connection.query('DELETE FROM audit_logs WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM kyc_records WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM land_records WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM collateral_records WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM yield_assessments WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM eligibility_results WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM credit_scores WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM financing_selections WHERE application_id = ?', [appId]);
+    await connection.query('DELETE FROM bank_submissions WHERE application_id = ?', [appId]);
+
+    // Delete application
+    const [delRes] = await connection.query('DELETE FROM financing_applications WHERE id = ?', [appId]);
+
+    await connection.commit();
+
+    if (delRes.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'Application not found or already deleted.' });
+    }
+
+    res.json({ success: true, message: 'Application deleted successfully.', deletedId: parseInt(appId) });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Delete application error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete application.' });
+  } finally {
+    connection.release();
+  }
+});
+
 // Add historical yield record for a farmer application
 router.post('/:id/historical-yield', async (req, res) => {
   try {
@@ -126,7 +242,7 @@ router.post('/:id/historical-yield', async (req, res) => {
     await pool.query(
       `INSERT INTO historical_yields (farmer_id, crop_type, yield_maunds, planting_date, harvest_date)
        VALUES (?, ?, ?, ?, ?)`,
-      [farmerId, crop_type || 'Wheat', yield_maunds || 40, planting_date || null, harvest_date || null]
+      [farmerId, crop_type || 'Wheat', yield_maunds || 40, planting_date || 'Rabi 2024', harvest_date || 'Apr 2025']
     );
 
     const [updated] = await pool.query('SELECT * FROM historical_yields WHERE farmer_id = ? ORDER BY id DESC', [farmerId]);
@@ -140,7 +256,7 @@ router.post('/:id/historical-yield', async (req, res) => {
 // Edit historical yield record
 router.put('/:id/historical-yield/:yieldId', async (req, res) => {
   try {
-    const { yieldId } = req.params;
+    const { appId, yieldId } = req.params;
     const { crop_type, yield_maunds, planting_date, harvest_date } = req.body;
     await pool.query(
       `UPDATE historical_yields SET crop_type = ?, yield_maunds = ?, planting_date = ?, harvest_date = ? WHERE id = ?`,
