@@ -51,7 +51,8 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
   });
 
   const [selectedPurposes, setSelectedPurposes] = useState(['Crop Seeds & Inputs', 'Fertilizers & Pesticides']);
-  const [cnicFile, setCnicFile] = useState(null);
+  const [cnicFrontFile, setCnicFrontFile] = useState(null);
+  const [cnicBackFile, setCnicBackFile] = useState(null);
   const [supportingFile, setSupportingFile] = useState(null);
 
   const [errors, setErrors] = useState({});
@@ -70,6 +71,12 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
 
   const handleRemovePurpose = (purpose) => {
     setSelectedPurposes(selectedPurposes.filter(p => p !== purpose));
+  };
+
+  const isImageFile = (filename) => {
+    if (!filename) return false;
+    const ext = filename.split('.').pop().toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'webp', 'jfif'].includes(ext);
   };
 
   const validateForm = () => {
@@ -107,9 +114,17 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
       errs.initial_financing_purpose = 'Please select at least one financing purpose LOV.';
     }
 
-    // STRICT CNIC IMAGE / DOCUMENT UPLOAD VALIDATION
-    if (!cnicFile) {
-      errs.cnicFile = 'CNIC Picture / Document upload is STRICTLY MANDATORY. Please upload CNIC front/back image before submitting.';
+    // STRICT CNIC FRONT & BACK IMAGE UPLOAD VALIDATION
+    if (!cnicFrontFile) {
+      errs.cnicFrontFile = 'CNIC Front Photo is STRICTLY MANDATORY. Please upload image.';
+    } else if (!isImageFile(cnicFrontFile)) {
+      errs.cnicFrontFile = 'Invalid file format. Please upload a valid image file (JPG, PNG, WEBP).';
+    }
+
+    if (!cnicBackFile) {
+      errs.cnicBackFile = 'CNIC Back Photo is STRICTLY MANDATORY. Please upload image.';
+    } else if (!isImageFile(cnicBackFile)) {
+      errs.cnicBackFile = 'Invalid file format. Please upload a valid image file (JPG, PNG, WEBP).';
     }
 
     setErrors(errs);
@@ -131,9 +146,25 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
         cnic: formData.cnic.replace(/[^0-9]/g, ''),
         mobile: formData.mobile.replace(/[^0-9]/g, ''),
         initial_financing_purpose: selectedPurposes.join(', '),
-        cnic_file_name: cnicFile,
+        cnic_front_file_name: cnicFrontFile,
+        cnic_back_file_name: cnicBackFile,
+        cnic_file_name: cnicFrontFile,
         doc_file_name: supportingFile
       };
+      const res = await registerFarmer(payload);
+      if (res.success) {
+        setCreatedAppId(res.application_id);
+        setCreatedFarmerName(formData.full_name);
+        setShowPromptModal(true);
+      } else {
+        setServerError(res.error || 'Failed to register farmer');
+      }
+    } catch (err) {
+      setServerError('Error registering farmer: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
       const res = await registerFarmer(payload);
       if (res.success) {
         setCreatedAppId(res.application_id);
@@ -322,38 +353,53 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
           </div>
         </div>
 
-        {/* WORKING DOCUMENT UPLOAD SECTION */}
+        {/* DUAL CNIC FRONT & BACK MANDATORY IMAGE UPLOADS */}
         <div className="card">
-          <div className="sectitle"><span className="ic">⬆</span> Documents</div>
+          <div className="sectitle"><span className="ic">⬆</span> CNIC &amp; Document Uploads</div>
           <div className="grid g2e">
             <div className="field">
-              <label>CNIC Copy (Front / Back) <span className="req">*</span></label>
-              <label className="upload" style={{ cursor: 'pointer', display: 'block', borderColor: errors.cnicFile ? 'var(--red)' : undefined, background: errors.cnicFile ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
+              <label>CNIC Front Image (JPG/PNG) <span className="req">*</span></label>
+              <label className="upload" style={{ cursor: 'pointer', display: 'block', borderColor: errors.cnicFrontFile ? 'var(--red)' : undefined, background: errors.cnicFrontFile ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
                 <input 
                   type="file" 
-                  accept="image/*,.pdf" 
+                  accept="image/jpeg,image/png,image/webp" 
                   style={{ display: 'none' }} 
-                  onChange={e => e.target.files[0] && setCnicFile(e.target.files[0].name)}
+                  onChange={e => e.target.files[0] && setCnicFrontFile(e.target.files[0].name)}
                 />
-                ⬆ {cnicFile ? `✓ File Selected: ${cnicFile}` : 'Upload CNIC (front / back)'}
-                <small>{cnicFile ? 'Ready to upload' : 'JPG or PDF · up to 5MB (STRICTLY REQUIRED)'}</small>
+                ⬆ {cnicFrontFile ? `✓ Selected: ${cnicFrontFile}` : 'Upload CNIC Front Image'}
+                <small>{cnicFrontFile ? 'Verified image file' : 'JPG or PNG only · up to 5MB (MANDATORY)'}</small>
               </label>
-              {errors.cnicFile && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px', fontWeight: 600 }}>⚠️ {errors.cnicFile}</div>}
+              {errors.cnicFrontFile && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px', fontWeight: 600 }}>⚠️ {errors.cnicFrontFile}</div>}
             </div>
 
             <div className="field">
-              <label>Supporting Land / Income Documents</label>
-              <label className="upload" style={{ cursor: 'pointer', display: 'block' }}>
+              <label>CNIC Back Image (JPG/PNG) <span className="req">*</span></label>
+              <label className="upload" style={{ cursor: 'pointer', display: 'block', borderColor: errors.cnicBackFile ? 'var(--red)' : undefined, background: errors.cnicBackFile ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
                 <input 
                   type="file" 
-                  accept="image/*,.pdf" 
+                  accept="image/jpeg,image/png,image/webp" 
                   style={{ display: 'none' }} 
-                  onChange={e => e.target.files[0] && setSupportingFile(e.target.files[0].name)}
+                  onChange={e => e.target.files[0] && setCnicBackFile(e.target.files[0].name)}
                 />
-                ⬆ {supportingFile ? `✓ File Selected: ${supportingFile}` : 'Upload supporting documents'}
-                <small>{supportingFile ? 'Ready to upload' : 'Optional'}</small>
+                ⬆ {cnicBackFile ? `✓ Selected: ${cnicBackFile}` : 'Upload CNIC Back Image'}
+                <small>{cnicBackFile ? 'Verified image file' : 'JPG or PNG only · up to 5MB (MANDATORY)'}</small>
               </label>
+              {errors.cnicBackFile && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px', fontWeight: 600 }}>⚠️ {errors.cnicBackFile}</div>}
             </div>
+          </div>
+
+          <div className="field" style={{ marginTop: '12px' }}>
+            <label>Supporting Land / Income Documents</label>
+            <label className="upload" style={{ cursor: 'pointer', display: 'block' }}>
+              <input 
+                type="file" 
+                accept="image/*,.pdf" 
+                style={{ display: 'none' }} 
+                onChange={e => e.target.files[0] && setSupportingFile(e.target.files[0].name)}
+              />
+              ⬆ {supportingFile ? `✓ File Selected: ${supportingFile}` : 'Upload supporting documents'}
+              <small>{supportingFile ? 'Ready to upload' : 'Optional · Land Fard / Passbook'}</small>
+            </label>
           </div>
         </div>
 
