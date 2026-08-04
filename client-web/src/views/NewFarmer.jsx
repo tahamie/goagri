@@ -165,20 +165,6 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
       setLoading(false);
     }
   };
-      const res = await registerFarmer(payload);
-      if (res.success) {
-        setCreatedAppId(res.application_id);
-        setCreatedFarmerName(formData.full_name);
-        setShowPromptModal(true);
-      } else {
-        setServerError(res.error || 'Failed to register farmer');
-      }
-    } catch (err) {
-      setServerError('Error registering farmer: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <section className="screen on">
