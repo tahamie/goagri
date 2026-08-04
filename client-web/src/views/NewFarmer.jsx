@@ -1,6 +1,33 @@
 import React, { useState } from 'react';
 import { registerFarmer } from '../services/api';
 
+function formatCnic(val) {
+  if (!val) return '';
+  const digits = val.replace(/\D/g, '').slice(0, 13);
+  if (digits.length <= 5) return digits;
+  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
+}
+
+function formatMobile(val) {
+  if (!val) return '';
+  const digits = val.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 4) return digits;
+  return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+}
+
+function formatCurrency(val) {
+  if (val === null || val === undefined || val === '') return '';
+  const cleanStr = String(val).replace(/[^0-9]/g, '');
+  if (!cleanStr) return '';
+  return Number(cleanStr).toLocaleString('en-US');
+}
+
+function parseRawNumber(val) {
+  if (!val) return '';
+  return String(val).replace(/[^0-9]/g, '');
+}
+
 const PURPOSE_OPTIONS = [
   'Crop Seeds & Inputs',
   'Fertilizers & Pesticides',
@@ -101,6 +128,8 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
     try {
       const payload = {
         ...formData,
+        cnic: formData.cnic.replace(/[^0-9]/g, ''),
+        mobile: formData.mobile.replace(/[^0-9]/g, ''),
         initial_financing_purpose: selectedPurposes.join(', '),
         cnic_file_name: cnicFile,
         doc_file_name: supportingFile
@@ -157,7 +186,7 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
                   type="text" 
                   placeholder="35201-1234567-1" 
                   value={formData.cnic} 
-                  onChange={e => setFormData({ ...formData, cnic: e.target.value })} 
+                  onChange={e => setFormData({ ...formData, cnic: formatCnic(e.target.value) })} 
                 />
               </div>
               {errors.cnic && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px' }}>{errors.cnic}</div>}
@@ -168,9 +197,9 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
               <div className="inp" style={{ borderColor: errors.mobile ? 'var(--red)' : undefined }}>
                 <input 
                   type="text" 
-                  placeholder="03001234567" 
+                  placeholder="0300-1234567" 
                   value={formData.mobile} 
-                  onChange={e => setFormData({ ...formData, mobile: e.target.value })} 
+                  onChange={e => setFormData({ ...formData, mobile: formatMobile(e.target.value) })} 
                 />
               </div>
               {errors.mobile && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px' }}>{errors.mobile}</div>}
@@ -250,10 +279,10 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
               <label>Financing Requirement (PKR) <span className="req">*</span></label>
               <div className="inp" style={{ borderColor: errors.initial_financing_requirement ? 'var(--red)' : undefined }}>
                 <input 
-                  type="number" 
-                  placeholder="e.g. 800000"
-                  value={formData.initial_financing_requirement} 
-                  onChange={e => setFormData({ ...formData, initial_financing_requirement: e.target.value })} 
+                  type="text" 
+                  placeholder="e.g. 1,200,000"
+                  value={formatCurrency(formData.initial_financing_requirement)} 
+                  onChange={e => setFormData({ ...formData, initial_financing_requirement: parseRawNumber(e.target.value) })} 
                 />
               </div>
               {errors.initial_financing_requirement && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px' }}>{errors.initial_financing_requirement}</div>}
