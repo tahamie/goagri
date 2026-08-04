@@ -23,9 +23,25 @@ app.use('/api/rules', ruleRoutes);
 app.use('/api/rates', rateRoutes);
 app.use('/api/banks', bankRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), platform: 'GoAgri Digital Financing API' });
+const path = require('path');
+
+// Serve React Web Admin Frontend Static Assets
+const clientDistPath = path.join(__dirname, '../../client-web/dist');
+const rootPublicPath = path.join(__dirname, '../../');
+
+app.use(express.static(clientDistPath));
+app.use(express.static(rootPublicPath));
+
+// Catch-all route to serve index.html for Single Page Application (SPA) routing
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ success: false, error: 'API route not found' });
+  }
+  res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+    if (err) {
+      res.sendFile(path.join(rootPublicPath, 'index.html'));
+    }
+  });
 });
 
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
