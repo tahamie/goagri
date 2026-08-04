@@ -66,6 +66,7 @@ router.post('/', async (req, res) => {
       cultivated_area,
       initial_financing_requirement,
       initial_financing_purpose,
+      cnic_file_name,
       registered_by = 1
     } = req.body;
 
@@ -75,6 +76,11 @@ router.post('/', async (req, res) => {
 
     if (!isValidCNIC(cnic)) {
       return res.status(400).json({ success: false, error: 'Please enter a valid 13-digit Pakistani CNIC number (e.g. 35201-1234567-1).' });
+    }
+
+    // STRICT CNIC IMAGE ATTACHMENT VALIDATION
+    if (!cnic_file_name || cnic_file_name.toString().trim() === '') {
+      return res.status(400).json({ success: false, error: 'CNIC picture / document upload is STRICTLY MANDATORY for farmer registration.' });
     }
 
     if (!isValidPakMobile(mobile)) {

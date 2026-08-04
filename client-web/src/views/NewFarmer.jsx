@@ -80,6 +80,11 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
       errs.initial_financing_purpose = 'Please select at least one financing purpose LOV.';
     }
 
+    // STRICT CNIC IMAGE / DOCUMENT UPLOAD VALIDATION
+    if (!cnicFile) {
+      errs.cnicFile = 'CNIC Picture / Document upload is STRICTLY MANDATORY. Please upload CNIC front/back image before submitting.';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -96,7 +101,9 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
     try {
       const payload = {
         ...formData,
-        initial_financing_purpose: selectedPurposes.join(', ')
+        initial_financing_purpose: selectedPurposes.join(', '),
+        cnic_file_name: cnicFile,
+        doc_file_name: supportingFile
       };
       const res = await registerFarmer(payload);
       if (res.success) {
@@ -291,8 +298,8 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
           <div className="sectitle"><span className="ic">⬆</span> Documents</div>
           <div className="grid g2e">
             <div className="field">
-              <label>CNIC Copy (Front / Back)</label>
-              <label className="upload" style={{ cursor: 'pointer', display: 'block' }}>
+              <label>CNIC Copy (Front / Back) <span className="req">*</span></label>
+              <label className="upload" style={{ cursor: 'pointer', display: 'block', borderColor: errors.cnicFile ? 'var(--red)' : undefined, background: errors.cnicFile ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
                 <input 
                   type="file" 
                   accept="image/*,.pdf" 
@@ -300,8 +307,9 @@ export default function NewFarmer({ onNavigate, onOpenApp }) {
                   onChange={e => e.target.files[0] && setCnicFile(e.target.files[0].name)}
                 />
                 ⬆ {cnicFile ? `✓ File Selected: ${cnicFile}` : 'Upload CNIC (front / back)'}
-                <small>{cnicFile ? 'Ready to upload' : 'JPG or PDF · up to 5MB'}</small>
+                <small>{cnicFile ? 'Ready to upload' : 'JPG or PDF · up to 5MB (STRICTLY REQUIRED)'}</small>
               </label>
+              {errors.cnicFile && <div style={{ color: 'var(--red)', fontSize: '11.5px', marginTop: '4px', fontWeight: 600 }}>⚠️ {errors.cnicFile}</div>}
             </div>
 
             <div className="field">
