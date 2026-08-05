@@ -157,7 +157,7 @@ router.post('/', async (req, res) => {
   } catch (error) {
     await connection.rollback();
     console.error('Farmer registration error:', error);
-    res.status(500).json({ 
+    res.status(400).json({ 
       success: false, 
       error: error.message || 'Could not register farmer profile. Please check information and try again.' 
     });
