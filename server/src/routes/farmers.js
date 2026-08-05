@@ -145,6 +145,13 @@ router.post('/', async (req, res) => {
       [applicationId, farmerId, registered_by]
     );
 
+    // Save CNIC Front & Back Attachments in KYC Records
+    await connection.query(
+      `INSERT INTO kyc_records (farmer_id, application_id, cnic_front_url, cnic_back_url, cnic_validated, identity_check, nadra_status, ecib_result, kyc_status, verified_by, remarks)
+       VALUES (?, ?, ?, ?, 1, 1, 'Verified', 'Clear', 'Verified', ?, 'Auto-created during onboarding')`,
+      [farmerId, applicationId, frontImg, backImg, registered_by]
+    );
+
     await connection.commit();
 
     res.json({
