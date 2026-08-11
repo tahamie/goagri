@@ -498,7 +498,7 @@ router.post('/:id/transition', async (req, res) => {
   } catch (error) {
     await connection.rollback();
     console.error('Workflow transition error:', error);
-    res.status(500).json({ success: false, error: 'Could not process workflow update. Please try again.' });
+    res.status(500).json({ success: false, error: error.message || 'Could not process workflow update. Please try again.' });
   } finally {
     connection.release();
   }
