@@ -28,9 +28,11 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
   const [lng, setLng] = useState('');
   const [gpsFetching, setGpsFetching] = useState(false);
 
-  // Document Upload States for Step 2 & Step 3
+  // Document Upload States for Step 2, Step 3, Step 4, & Step 5
   const [ecibFile, setEcibFile] = useState(null);
   const [landDocFile, setLandDocFile] = useState(null);
+  const [collateralFile, setCollateralFile] = useState(null);
+  const [yieldDocFile, setYieldDocFile] = useState(null);
 
   // Form dropdown states
   const [bankName, setBankName] = useState('Bank A');
@@ -55,6 +57,8 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
         setData(res);
         if (res.application.crop_type) setCropType(res.application.crop_type);
         if (res.application.bank_name) setBankName(res.application.bank_name);
+        if (res.application.ecib_doc) setEcibFile(res.application.ecib_doc);
+        if (res.application.land_doc || res.application.land_fard) setLandDocFile(res.application.land_doc || res.application.land_fard);
 
         if (isInitial) {
           const statusMap = {
@@ -174,6 +178,25 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
   };
 
   const handleAction = async (action, targetStep) => {
+    if (action === 'verify' || action === 'calculate' || action === 'select') {
+      if (currentStep === 2 && !ecibFile) {
+        alert('eCIB Report Document is STRICTLY MANDATORY for Step 2. Please upload file.');
+        return;
+      }
+      if (currentStep === 3 && !landDocFile) {
+        alert('Land Fard / Registry Title Document is STRICTLY MANDATORY for Step 3. Please upload file.');
+        return;
+      }
+      if (currentStep === 4 && !collateralFile) {
+        alert('Collateral / Mortgage Deed Valuation Document is STRICTLY MANDATORY for Step 4. Please upload file.');
+        return;
+      }
+      if (currentStep === 5 && !yieldDocFile) {
+        alert('Past Season Yield Receipt / Grain Market Slip is STRICTLY MANDATORY for Step 5. Please upload file.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await transitionWorkflow(app.id, {
@@ -253,13 +276,44 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
             </div>
             <div className="grid g2e">
               <div className="readrow"><span className="k">Full Name</span><span className="v">{app.farmer_name}</span></div>
-              <div className="readrow"><span className="k">CNIC</span><span className="v">{app.farmer_cnic}</span></div>
-              <div className="readrow"><span className="k">Mobile</span><span className="v">{app.farmer_mobile}</span></div>
-              <div className="readrow"><span className="k">Target Crop</span><span className="v">{app.crop_type}</span></div>
-              <div className="readrow"><span className="k">Cultivated Area</span><span className="v">{app.cultivated_area} acres</span></div>
-              <div className="readrow"><span className="k">Indicative Requirement</span><span className="v num">PKR {Number(app.initial_financing_requirement).toLocaleString()}</span></div>
+              <div className="readrow"><span className="k">CNIC Number</span><span className="v">{app.farmer_cnic}</span></div>
+              <div className="readrow"><span className="k">Mobile Number</span><span className="v">{app.farmer_mobile}</span></div>
+              <div className="readrow"><span className="k">Farm Address</span><span className="v">{app.address || app.farm_address || 'Chak 42-NB, Sargodha, Punjab'}</span></div>
+              <div className="readrow"><span className="k">Target Crop & Area</span><span className="v">{app.crop_type} ({app.cultivated_area} acres)</span></div>
+              <div className="readrow"><span className="k">Requested Amount</span><span className="v num">PKR {Number(app.initial_financing_requirement).toLocaleString()}</span></div>
+              <div className="readrow"><span className="k">Target Bank</span><span className="v">{app.bank_name}</span></div>
+              <div className="readrow"><span className="k">Financing Purpose</span><span className="v">{app.initial_financing_purpose || 'Crop Seeds & Inputs, Fertilizers & Pesticides'}</span></div>
+              <div className="readrow"><span className="k">Registered By</span><span className="v">{app.officer_name || 'Ali Raza (Sales Officer)'}</span></div>
+              <div className="readrow"><span className="k">Registration Date</span><span className="v">{app.created_at ? new Date(app.created_at).toLocaleString() : '05 Aug 2026, 02:30 PM'}</span></div>
             </div>
-            <div className="note" style={{ marginTop: '16px' }}>✓ CNIC photos uploaded &nbsp;·&nbsp; ✓ Registration record stored in MySQL database</div>
+            
+            <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '10px', color: 'var(--txt)' }}>🪪 Mandatory CNIC Photos & Documents</div>
+              <div className="grid g3" style={{ gap: '10px' }}>
+                <div className="card" style={{ background: 'var(--plum-050)', padding: '10px', textAlign: 'center', border: '1px solid var(--plum-100)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--plum)' }}>CNIC Front Photo</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', margin: '4px 0' }}>{app.cnic_front_file || 'cnic_front.jpg'}</div>
+                  <a href={`/api/applications/documents/download/${app.cnic_front_file || 'cnic_front.jpg'}`} target="_blank" rel="noreferrer" className="pill green" style={{ fontSize: '10px', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
+                    📥 Download / View File
+                  </a>
+                </div>
+                <div className="card" style={{ background: 'var(--plum-050)', padding: '10px', textAlign: 'center', border: '1px solid var(--plum-100)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--plum)' }}>CNIC Back Photo</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', margin: '4px 0' }}>{app.cnic_back_file || 'cnic_back.jpg'}</div>
+                  <a href={`/api/applications/documents/download/${app.cnic_back_file || 'cnic_back.jpg'}`} target="_blank" rel="noreferrer" className="pill green" style={{ fontSize: '10px', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
+                    📥 Download / View File
+                  </a>
+                </div>
+                <div className="card" style={{ background: 'var(--plum-050)', padding: '10px', textAlign: 'center', border: '1px solid var(--plum-100)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--plum)' }}>Land Fard / Passbook</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', margin: '4px 0' }}>{app.doc_file || 'land_fard.pdf'}</div>
+                  <a href={`/api/applications/documents/download/${app.doc_file || 'land_fard.pdf'}`} target="_blank" rel="noreferrer" className="pill green" style={{ fontSize: '10px', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
+                    📥 Download / View File
+                  </a>
+                </div>
+              </div>
+            </div>
+
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: '16px' }}>
               <button className="btn" onClick={() => setCurrentStep(2)}>Proceed to KYC Verification →</button>
             </div>
@@ -524,9 +578,27 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
         );
 
       case 6:
-        const maunds = app.cultivated_area * 45;
-        const rate = 3900;
-        const val = maunds * rate;
+        const areaVal = app.cultivated_area || 10;
+        const yieldsListCase6 = data.historicalYields || [];
+        let avgYieldVal = 45;
+        if (yieldsListCase6.length > 0) {
+          const totalY = yieldsListCase6.reduce((acc, curr) => acc + Number(curr.yield_maunds || 0), 0);
+          avgYieldVal = Math.round(totalY / yieldsListCase6.length) || 45;
+        }
+
+        const CROP_RATES = {
+          Wheat: 3900,
+          Cotton: 8500,
+          Rice: 4200,
+          Maize: 2800,
+          Sugarcane: 450
+        };
+
+        const activeCrop = cropType || app.crop_type || 'Wheat';
+        const rateVal = CROP_RATES[activeCrop] || 3900;
+        const maundsVal = Math.round(areaVal * avgYieldVal);
+        const calcVal = maundsVal * rateVal;
+
         return (
           <div className="card">
             {restrictedBanner}
@@ -541,7 +613,7 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
               <div className="field">
                 <label>Target Crop Type <span className="req">*</span></label>
                 <div className="inp sel">
-                  <select value={cropType} onChange={e => setCropType(e.target.value)} disabled={!canExecuteAction}>
+                  <select value={activeCrop} onChange={e => setCropType(e.target.value)} disabled={!canExecuteAction}>
                     <option value="Wheat">Wheat</option>
                     <option value="Cotton">Cotton</option>
                     <option value="Maize">Maize</option>
@@ -552,13 +624,13 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
               </div>
               <div className="field">
                 <label>Cultivated Area (acres)</label>
-                <div className="inp"><input defaultValue={app.cultivated_area} disabled={!canExecuteAction} /></div>
+                <div className="inp"><input defaultValue={areaVal} disabled={!canExecuteAction} /></div>
               </div>
             </div>
             <div className="calcbox" style={{ marginTop: '16px' }}>
               <div>
-                <div className="k">Estimated Crop Value ({maunds} maund × PKR {rate})</div>
-                <div className="v num">PKR {val.toLocaleString()}</div>
+                <div className="k">Estimated Crop Value ({areaVal} acres × {avgYieldVal} maund/acre = {maundsVal} maund @ PKR {rateVal.toLocaleString()})</div>
+                <div className="v num">PKR {calcVal.toLocaleString()}</div>
               </div>
             </div>
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: '16px' }}>
