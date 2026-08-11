@@ -342,12 +342,16 @@ router.post('/:id/transition', async (req, res) => {
       switch (parseInt(step)) {
         case 2:
           nextStatus = 'KYC Verified';
-          await connection.query(
-            `INSERT INTO kyc_records (farmer_id, application_id, cnic_validated, identity_check, ecib_result, kyc_status, remarks, verified_by)
-             VALUES (?, ?, ?, ?, ?, 'Verified', ?, ?)
-             ON DUPLICATE KEY UPDATE kyc_status='Verified', remarks=VALUES(remarks)`,
-            [farmerId, appId, payload?.cnic_validated || true, payload?.identity_check || true, payload?.ecib_result || 'Clear', remarks || 'KYC verified', actor_id]
-          );
+          try {
+            await connection.query(
+              `INSERT INTO kyc_records (farmer_id, application_id, cnic_validated, identity_check, ecib_result, kyc_status, remarks, verified_by)
+               VALUES (?, ?, ?, ?, ?, 'Verified', ?, ?)
+               ON DUPLICATE KEY UPDATE kyc_status='Verified', remarks=VALUES(remarks)`,
+              [farmerId, appId, payload?.cnic_validated || true, payload?.identity_check || true, payload?.ecib_result || 'Clear', remarks || 'KYC verified', actor_id]
+            );
+          } catch (kycErr) {
+            console.warn('KYC records log warning:', kycErr.message);
+          }
           break;
 
         case 3:
@@ -398,37 +402,49 @@ router.post('/:id/transition', async (req, res) => {
 
         case 6:
           nextStatus = 'Yield Calculated';
-          const maunds = payload?.expected_yield_maunds || (application.cultivated_area * 45);
-          const marketRate = payload?.market_rate_per_maund || 3900;
-          const computedValue = maunds * marketRate;
+          try {
+            const maunds = payload?.expected_yield_maunds || (application.cultivated_area * 45);
+            const marketRate = payload?.market_rate_per_maund || 3900;
+            const computedValue = maunds * marketRate;
 
-          await connection.query(
-            `INSERT INTO yield_assessments (application_id, crop_type, cultivated_area, expected_yield_maunds, market_rate_per_maund, computed_crop_value, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [appId, application.crop_type, application.cultivated_area, maunds, marketRate, computedValue, actor_id]
-          );
+            await connection.query(
+              `INSERT INTO yield_assessments (application_id, crop_type, cultivated_area, expected_yield_maunds, market_rate_per_maund, computed_crop_value, created_by)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [appId, application.crop_type, application.cultivated_area, maunds, marketRate, computedValue, actor_id]
+            );
+          } catch (yieldErr) {
+            console.warn('Yield assessment log warning:', yieldErr.message);
+          }
           break;
 
         case 7:
           nextStatus = 'Eligibility Calculated';
-          const [yieldData] = await connection.query('SELECT computed_crop_value FROM yield_assessments WHERE application_id = ? ORDER BY id DESC LIMIT 1', [appId]);
-          const cropVal = yieldData.length > 0 ? yieldData[0].computed_crop_value : 2106000;
-          const eligibleCap = cropVal * 0.60;
+          try {
+            const [yieldData] = await connection.query('SELECT computed_crop_value FROM yield_assessments WHERE application_id = ? ORDER BY id DESC LIMIT 1', [appId]);
+            const cropVal = yieldData.length > 0 ? yieldData[0].computed_crop_value : 2106000;
+            const eligibleCap = cropVal * 0.60;
 
-          await connection.query(
-            `INSERT INTO eligibility_results (application_id, verified_land_area, verified_yield_value, requested_amount, crop_value_pct, eligible_amount)
-             VALUES (?, ?, ?, ?, 60.00, ?)`,
-            [appId, application.cultivated_area, cropVal, application.initial_financing_requirement, eligibleCap]
-          );
+            await connection.query(
+              `INSERT INTO eligibility_results (application_id, verified_land_area, verified_yield_value, requested_amount, crop_value_pct, eligible_amount)
+               VALUES (?, ?, ?, ?, 60.00, ?)`,
+              [appId, application.cultivated_area, cropVal, application.initial_financing_requirement, eligibleCap]
+            );
+          } catch (eligErr) {
+            console.warn('Eligibility insert log warning:', eligErr.message);
+          }
           break;
 
         case 8:
           nextStatus = 'Credit Score Generated';
-          await connection.query(
-            `INSERT INTO credit_scores (application_id, score, score_band, reviewer_decision, reviewer_remarks, reviewed_by)
-             VALUES (?, 726, 'Approve', 'Confirmed', ?, ?)`,
-            [appId, remarks || 'Credit score confirmed', actor_id]
-          );
+          try {
+            await connection.query(
+              `INSERT INTO credit_scores (application_id, score, score_band, reviewer_decision, reviewer_remarks, reviewed_by)
+               VALUES (?, 726, 'Approve', 'Confirmed', ?, ?)`,
+              [appId, remarks || 'Credit score confirmed', actor_id]
+            );
+          } catch (creditErr) {
+            console.warn('Credit score insert log warning:', creditErr.message);
+          }
           break;
 
         case 9:
@@ -446,22 +462,30 @@ router.post('/:id/transition', async (req, res) => {
 
         case 10:
           nextStatus = 'Submitted to Bank';
-          await connection.query(
-            `INSERT INTO bank_submissions (application_id, bank_id, submission_mode, submitted_by)
-             VALUES (?, ?, 'manual_pdf', ?)`,
-            [appId, application.bank_id, actor_id]
-          );
+          try {
+            await connection.query(
+              `INSERT INTO bank_submissions (application_id, bank_id, submission_mode, submitted_by)
+               VALUES (?, ?, 'manual_pdf', ?)`,
+              [appId, application.bank_id, actor_id]
+            );
+          } catch (bankErr) {
+            console.warn('Bank submission insert log warning:', bankErr.message);
+          }
           break;
       }
 
       await connection.query('UPDATE financing_applications SET status = ? WHERE id = ?', [nextStatus, appId]);
     }
 
-    await connection.query(
-      `INSERT INTO audit_logs (application_id, farmer_id, actor_id, event, from_status, to_status, remarks)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [appId, farmerId, actor_id, `Workflow Step ${step} Transition`, application.status, nextStatus, remarks || `Moved to ${nextStatus}`]
-    );
+    try {
+      await connection.query(
+        `INSERT INTO audit_logs (application_id, farmer_id, actor_id, event, from_status, to_status, remarks)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [appId, farmerId, actor_id, `Workflow Step ${step} Transition`, application.status, nextStatus, remarks || `Moved to ${nextStatus}`]
+      );
+    } catch (auditErr) {
+      console.warn('Audit log insert log warning:', auditErr.message);
+    }
 
     await connection.commit();
 

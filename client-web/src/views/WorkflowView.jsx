@@ -62,10 +62,13 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
 
         if (isInitial) {
           const statusMap = {
+            'Farmer Registered': 2,
             'KYC Pending': 2,
             'KYC Verified': 3,
+            'Farmer Active': 3,
             'Land Verified': 4,
             'Collateral Verified': 5,
+            'Yield Records Saved': 5,
             'Yield Calculated': 6,
             'Eligibility Calculated': 7,
             'Credit Score Generated': 8,
