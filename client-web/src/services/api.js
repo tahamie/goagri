@@ -1,4 +1,6 @@
-const API_BASE = '/api';
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname.includes('tahamiefarooqui.com'))
+  ? 'https://goagri-platform.vercel.app/api'
+  : '/api';
 
 function getAuthHeaders() {
   const token = localStorage.getItem('goagri_token');

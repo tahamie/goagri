@@ -474,7 +474,15 @@ router.post('/:id/transition', async (req, res) => {
           break;
       }
 
-      await connection.query('UPDATE financing_applications SET status = ? WHERE id = ?', [nextStatus, appId]);
+      try {
+        await connection.query('UPDATE financing_applications SET status = ? WHERE id = ?', [nextStatus, appId]);
+      } catch (statusErr) {
+        console.warn('Status update query warning:', statusErr.message);
+        try {
+          await connection.query('ALTER TABLE financing_applications MODIFY status VARCHAR(100)');
+          await connection.query('UPDATE financing_applications SET status = ? WHERE id = ?', [nextStatus, appId]);
+        } catch (_) {}
+      }
     }
 
     try {
