@@ -59,6 +59,7 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
         if (res.application.bank_name) setBankName(res.application.bank_name);
         if (res.application.ecib_doc) setEcibFile(res.application.ecib_doc);
         if (res.application.land_doc || res.application.land_fard) setLandDocFile(res.application.land_doc || res.application.land_fard);
+        if (res.application.collateral_doc) setCollateralFile(res.application.collateral_doc);
 
         if (isInitial) {
           const statusMap = {
@@ -498,8 +499,29 @@ export default function WorkflowView({ appId, currentUser, onNavigate }) {
             <div className="field" style={{ marginTop: '12px' }}>
               <label>Collateral Verification Remarks</label>
               <div className="inp area">
-                <textarea placeholder="Officer notes on land registry & encumbrance checks..." disabled={!canExecuteAction} />
+                <textarea 
+                  placeholder="Officer notes on land registry & encumbrance checks..." 
+                  disabled={!canExecuteAction} 
+                  value={remarks}
+                  onChange={e => setRemarks(e.target.value)}
+                />
               </div>
+            </div>
+
+            {/* WORKING COLLATERAL DOCUMENTS UPLOAD */}
+            <div className="field" style={{ marginTop: '12px' }}>
+              <label>Collateral / Mortgage Valuation Document Upload</label>
+              <label className="upload" style={{ cursor: canExecuteAction ? 'pointer' : 'not-allowed', display: 'block' }}>
+                <input 
+                  type="file" 
+                  accept="image/*,.pdf" 
+                  disabled={!canExecuteAction} 
+                  style={{ display: 'none' }}
+                  onChange={e => e.target.files[0] && setCollateralFile(e.target.files[0].name)}
+                />
+                ⬆ {collateralFile ? `✓ Document Attached: ${collateralFile}` : 'Upload Collateral / Mortgage Valuation Document (PDF / JPG)'}
+                <small>{collateralFile ? 'Document verified & uploaded' : 'Collateral Verification'}</small>
+              </label>
             </div>
             <div className="row" style={{ justifyContent: 'flex-end', marginTop: '16px', gap: '10px' }}>
               <button className="btn ghost" disabled={loading || !canExecuteAction} onClick={() => handleAction('send_back')}>Send Back</button>
